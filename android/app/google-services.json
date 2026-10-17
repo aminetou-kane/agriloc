@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "371223868653",
+    "project_id": "agriloc-f4d6d",
+    "storage_bucket": "agriloc-f4d6d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:371223868653:android:85be86349061e5465708e4",
+        "android_client_info": {
+          "package_name": "com.example.agriloc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBK-xUp8LOmoEOFdUk5RcIY20Hx6wg2CTM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

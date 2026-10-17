@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+
+    match /materiels/{materielId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                    && request.resource.data.proprietaireId == request.auth.uid;
+
+      allow update, delete: if request.auth != null
+                            && resource.data.proprietaireId == request.auth.uid;
+    }
+
+    match /demandes/{demandeId} {
+      allow create: if request.auth != null
+                    && request.resource.data.agriculteurId == request.auth.uid;
+
+      allow read: if request.auth != null
+                  && (resource.data.agriculteurId == request.auth.uid
+                      || resource.data.proprietaireId == request.auth.uid);
+
+      allow update: if request.auth != null
+                    && resource.data.proprietaireId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['statut', 'dateModification', 'motif']);
+
+      allow delete: if request.auth != null
+                    && (resource.data.agriculteurId == request.auth.uid
+                        || resource.data.proprietaireId == request.auth.uid);
+    }
+  }
+}
