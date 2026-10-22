@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../utils/constantes.dart';
+import '../../widgets/photos_materiel.dart';
 
 class AjouterMaterielScreen extends StatefulWidget {
   const AjouterMaterielScreen({super.key});
@@ -23,6 +24,7 @@ class _AjouterMaterielScreenState extends State<AjouterMaterielScreen> {
   String? _typeMateriel;
   String _modePaiement = 'argent';
 
+  List<String> _photos = [];
   bool _chargement = false;
 
   static const _types = typesMateriel;
@@ -80,6 +82,7 @@ class _AjouterMaterielScreenState extends State<AjouterMaterielScreen> {
         'proprietaireId': user.uid,
         'disponible': true,
         'visible': true,
+        'photos': _photos,
         'dateAjout': FieldValue.serverTimestamp(),
       };
 
@@ -108,6 +111,7 @@ class _AjouterMaterielScreenState extends State<AjouterMaterielScreen> {
       setState(() {
         _typeMateriel = null;
         _modePaiement = 'argent';
+        _photos = [];
       });
     } on FirebaseException catch (e) {
       if (mounted) {
@@ -355,6 +359,14 @@ class _AjouterMaterielScreenState extends State<AjouterMaterielScreen> {
                       }
                       return null;
                     },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  SelecteurPhotos(
+                    photos: _photos,
+                    desactive: _chargement,
+                    onChanged: (p) => setState(() => _photos = p),
                   ),
 
                   const SizedBox(height: 25),

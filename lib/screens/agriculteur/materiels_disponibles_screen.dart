@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../services/notification_service.dart';
 import '../../utils/constantes.dart';
 import '../../utils/periode.dart';
+import '../../widgets/photos_materiel.dart';
 
 class MaterielsDisponiblesScreen extends StatefulWidget {
   const MaterielsDisponiblesScreen({super.key});
@@ -465,11 +466,7 @@ class _MaterielsDisponiblesScreenState
                                 children: [
                                   Row(
                                     children: [
-                                      const Icon(
-                                        Icons.agriculture,
-                                        size: 45,
-                                        color: Colors.green,
-                                      ),
+                                      PhotoMateriel(data: data, taille: 60),
                                       const SizedBox(width: 15),
                                       Expanded(
                                         child: Text(
@@ -482,6 +479,8 @@ class _MaterielsDisponiblesScreenState
                                       ),
                                     ],
                                   ),
+
+                                  BandePhotos(photos: photosDe(data)),
 
                                   const SizedBox(height: 8),
 

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../utils/constantes.dart';
+import '../../widgets/photos_materiel.dart';
 
 class ModifierMaterielScreen extends StatefulWidget {
   final String materielId;
@@ -31,6 +32,7 @@ class _ModifierMaterielScreenState extends State<ModifierMaterielScreen> {
   String _modePaiement = 'argent';
 
   bool _disponible = true;
+  List<String> _photos = [];
   bool _chargement = false;
 
   static const _types = typesMateriel;
@@ -77,6 +79,7 @@ class _ModifierMaterielScreenState extends State<ModifierMaterielScreen> {
     }
 
     _disponible = widget.materiel['disponible'] != false;
+    _photos = photosDe(widget.materiel);
   }
 
   @override
@@ -132,6 +135,7 @@ class _ModifierMaterielScreenState extends State<ModifierMaterielScreen> {
         'modePaiement': _modePaiement,
         'localisation': _localisationController.text.trim(),
         'disponible': _disponible,
+        'photos': _photos,
         'dateModification': FieldValue.serverTimestamp(),
       };
 
@@ -441,6 +445,14 @@ class _ModifierMaterielScreenState extends State<ModifierMaterielScreen> {
                   ),
 
                   const SizedBox(height: 20),
+
+                  SelecteurPhotos(
+                    photos: _photos,
+                    desactive: _chargement,
+                    onChanged: (p) => setState(() => _photos = p),
+                  ),
+
+                  const SizedBox(height: 25),
 
                   // BOUTON
                   SizedBox(

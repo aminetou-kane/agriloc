@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../widgets/photos_materiel.dart';
+
 import 'modifier_materiel_screen.dart';
 
 class MaterielsScreen extends StatelessWidget {
@@ -287,11 +289,7 @@ class MaterielsScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(
-                            Icons.agriculture,
-                            size: 42,
-                            color: Colors.green,
-                          ),
+                          PhotoMateriel(data: data, taille: 56),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(

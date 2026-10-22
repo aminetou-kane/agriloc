@@ -76,45 +76,86 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SizedBox.expand(
-        child: Image.asset(
-          'assets/images/agriloc_splash.png',
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Container(
-            decoration: const BoxDecoration(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Image d'ouverture (assets/images/agriloc_splash.png)
+          Image.asset(
+            'assets/images/agriloc_splash.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF14532D), Color(0xFF65A30D)],
+                ),
+              ),
+            ),
+          ),
+          // Voile sombre pour que le texte reste lisible
+          const DecoratedBox(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF14532D), Color(0xFF65A30D)],
+                colors: [Color(0x66000000), Color(0xCC0B3D1E)],
               ),
             ),
-            child: const Center(
+          ),
+          SafeArea(
+            child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.agriculture, size: 90, color: Colors.white),
-                  SizedBox(height: 16),
-                  Text(
-                    'AgriLoc',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: const BoxDecoration(
                       color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.agriculture,
+                      size: 70,
+                      color: Color(0xFF2E7D32),
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Le matériel agricole à portée de main.',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                    textAlign: TextAlign.center,
+                  const SizedBox(height: 20),
+                  const Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Agri',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        TextSpan(
+                          text: 'Loc',
+                          style: TextStyle(color: Color(0xFFFFA726)),
+                        ),
+                      ],
+                    ),
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
-                  SizedBox(height: 28),
-                  CircularProgressIndicator(color: Colors.white),
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 30),
+                    child: Text(
+                      'Le matériel agricole à portée de main.',
+                      style: TextStyle(color: Colors.white, fontSize: 17),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+                  const CircularProgressIndicator(color: Colors.white),
                 ],
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

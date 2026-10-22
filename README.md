@@ -18,7 +18,7 @@ Le projet répond à une difficulté rencontrée dans le milieu agricole : l'acc
 - Création de compte et connexion des utilisateurs.
 - Gestion des profils selon le rôle de l'utilisateur.
 - Consultation du matériel agricole disponible, recherche par mot-clé et filtre par type.
-- Publication et gestion du matériel proposé à la location (12 types : tracteur, motopompe, semoir, etc.).
+- Publication et gestion du matériel proposé à la location (12 types : tracteur, motopompe, semoir, etc.), avec jusqu'à 3 photos par annonce (galerie ou appareil photo).
 - Demande de location pour une **période donnée** (date de début / date de fin).
 - **Calendrier de disponibilité** : les périodes déjà réservées sont affichées et les chevauchements sont refusés.
 - Acceptation / refus des demandes par les propriétaires, fin de location.
@@ -118,11 +118,16 @@ Le rôle `admin` ne peut pas être choisi à l'inscription. Pour créer l'admini
 
 ## Changer l'image d'ouverture
 
-Remplacer le fichier `assets/images/agriloc_splash.png` par la nouvelle image (même nom, format PNG), puis relancer `flutter run`.
+L'image d'ouverture est `assets/images/agriloc_splash.png` (photo de tracteurs). Le logo et le slogan AgriLoc sont ajoutés par-dessus dans `splash_screen.dart`. Pour la changer, remplacer le fichier (même nom, PNG) puis relancer `flutter run`.
 
 ## Sécurité
 
 AgriLoc utilise Firebase pour l'authentification et la gestion des données. Les règles Firestore (rôles protégés, accès limité aux parties concernées) doivent être vérifiées avant tout déploiement afin que chaque utilisateur puisse uniquement effectuer les opérations autorisées pour son rôle.
+
+## Limites connues
+
+- Les notifications sont internes à l'application (pas de notification push) ; les push nécessiteraient Firebase Cloud Functions et FCM.
+- Les photos sont stockées en base64 dans Firestore (réduites à 800 px) : suffisant pour un projet académique, à remplacer par Firebase Storage en production.
 
 ## Évolutions possibles
 
