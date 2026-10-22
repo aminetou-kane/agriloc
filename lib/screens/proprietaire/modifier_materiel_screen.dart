@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../utils/constantes.dart';
+
 class ModifierMaterielScreen extends StatefulWidget {
   final String materielId;
   final Map<String, dynamic> materiel;
@@ -31,14 +33,7 @@ class _ModifierMaterielScreenState extends State<ModifierMaterielScreen> {
   bool _disponible = true;
   bool _chargement = false;
 
-  static const _types = [
-    'Tracteur',
-    'Moissonneuse',
-    'Motoculteur',
-    'Semoir',
-    'Pulvérisateur',
-    'Autre',
-  ];
+  static const _types = typesMateriel;
 
   @override
   void initState() {

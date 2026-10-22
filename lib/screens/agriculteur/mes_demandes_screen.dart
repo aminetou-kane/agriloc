@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../utils/periode.dart';
+
 import '../avis/laisser_avis_dialog.dart';
 
 class MesDemandesScreen extends StatelessWidget {
@@ -270,6 +272,23 @@ class MesDemandesScreen extends StatelessWidget {
                       ),
 
                       const SizedBox(height: 7),
+
+                      if (data['dateDebut'] is Timestamp &&
+                          data['dateFin'] is Timestamp) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.event, size: 20, color: Colors.green),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Location ${formaterPeriode((data['dateDebut'] as Timestamp).toDate(), (data['dateFin'] as Timestamp).toDate())}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                      ],
 
                       // Date de la demande
                       Text(

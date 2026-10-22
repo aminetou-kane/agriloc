@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/rappel_service.dart';
 import '../auth/login_screen.dart';
 import '../admin/admin_home_screen.dart';
 import '../agriculteur/agriculteur_home_screen.dart';
@@ -47,6 +48,11 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
       if (!mounted) return;
+
+      if (role == 'agriculteur' || role == 'proprietaire') {
+        // Rappels avant la date de location (sans bloquer l'ouverture).
+        RappelService.verifier().catchError((_) {});
+      }
 
       if (role == 'admin') {
         _ouvrir(const AdminHomeScreen());

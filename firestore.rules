@@ -3,37 +3,129 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /users/{userId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
+    // ---------- Fonctions utilitaires ----------
+    function connecte() {
+      return request.auth != null;
     }
 
-    match /materiels/{materielId} {
-      allow read: if request.auth != null;
+    function estAdmin() {
+      return connecte()
+          && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
 
-      allow create: if request.auth != null
+    // ---------- Utilisateurs ----------
+    // Le rôle "admin" ne peut pas être choisi à l'inscription : le compte
+    // administrateur se crée à la main dans la console Firebase.
+    match /users/{userId} {
+      allow read: if connecte() && (request.auth.uid == userId || estAdmin());
+
+      allow create: if connecte()
+                    && request.auth.uid == userId
+                    && request.resource.data.role in ['agriculteur', 'proprietaire']
+                    && !('bloque' in request.resource.data);
+
+      // Un utilisateur modifie son profil mais ni son rôle ni son blocage.
+      allow update: if connecte()
+                    && request.auth.uid == userId
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['role', 'bloque']);
+
+      // L'administrateur peut seulement bloquer / débloquer un compte.
+      allow update: if estAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['bloque']);
+    }
+
+    // ---------- Matériels ----------
+    match /materiels/{materielId} {
+      allow read: if connecte();
+
+      allow create: if connecte()
                     && request.resource.data.proprietaireId == request.auth.uid;
 
-      allow update, delete: if request.auth != null
-                            && resource.data.proprietaireId == request.auth.uid;
+      allow update: if connecte()
+                    && resource.data.proprietaireId == request.auth.uid
+                    && request.resource.data.proprietaireId == request.auth.uid;
+
+      // Modération : l'administrateur peut masquer / afficher une annonce.
+      allow update: if estAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['visible']);
+
+      allow delete: if connecte()
+                    && (resource.data.proprietaireId == request.auth.uid || estAdmin());
     }
 
+    // ---------- Demandes de location ----------
     match /demandes/{demandeId} {
-      allow create: if request.auth != null
-                    && request.resource.data.agriculteurId == request.auth.uid;
+      allow create: if connecte()
+                    && request.resource.data.agriculteurId == request.auth.uid
+                    && request.resource.data.statut == 'en_attente';
 
-      allow read: if request.auth != null
+      allow read: if connecte()
                   && (resource.data.agriculteurId == request.auth.uid
-                      || resource.data.proprietaireId == request.auth.uid);
+                      || resource.data.proprietaireId == request.auth.uid
+                      || estAdmin());
 
-      allow update: if request.auth != null
+      allow update: if connecte()
                     && resource.data.proprietaireId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['statut', 'dateModification', 'motif']);
+                         .hasOnly(['statut', 'dateModification', 'motif']);
 
-      allow delete: if request.auth != null
+      allow delete: if connecte()
                     && (resource.data.agriculteurId == request.auth.uid
                         || resource.data.proprietaireId == request.auth.uid);
+    }
+
+    // ---------- Réservations (calendrier de disponibilité) ----------
+    // Lisibles par tous les utilisateurs connectés pour afficher les dates
+    // déjà prises ; écrites uniquement par le propriétaire du matériel.
+    match /reservations/{reservationId} {
+      allow read: if connecte();
+      allow create: if connecte()
+                    && request.resource.data.proprietaireId == request.auth.uid;
+      allow delete: if connecte()
+                    && resource.data.proprietaireId == request.auth.uid;
+    }
+
+    // ---------- Notifications ----------
+    match /notifications/{notificationId} {
+      // "get" sur un document inexistant (resource == null) est autorisé :
+      // le service de rappels vérifie ainsi qu'un rappel n'existe pas déjà.
+      allow get: if connecte()
+                 && (resource == null || resource.data.destinataireId == request.auth.uid);
+      allow list, delete: if connecte()
+                          && resource.data.destinataireId == request.auth.uid;
+
+      allow create: if connecte()
+                    && request.resource.data.lu == false;
+
+      // Le destinataire peut uniquement marquer la notification comme lue.
+      allow update: if connecte()
+                    && resource.data.destinataireId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['lu']);
+    }
+
+    // ---------- Avis et notes ----------
+    match /avis/{avisId} {
+      allow read: if connecte();
+      allow create: if connecte()
+                    && request.resource.data.agriculteurId == request.auth.uid
+                    && request.resource.data.note is int
+                    && request.resource.data.note >= 1
+                    && request.resource.data.note <= 5;
+      allow delete: if estAdmin();
+    }
+
+    // ---------- Signalements ----------
+    match /signalements/{signalementId} {
+      allow create: if connecte()
+                    && request.resource.data.auteurId == request.auth.uid;
+      allow read: if connecte()
+                  && (resource.data.auteurId == request.auth.uid || estAdmin());
+      allow update: if estAdmin();
     }
   }
 }

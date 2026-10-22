@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/notification_service.dart';
+import '../../utils/constantes.dart';
+import '../../utils/periode.dart';
 
 class MaterielsDisponiblesScreen extends StatefulWidget {
   const MaterielsDisponiblesScreen({super.key});
@@ -17,6 +19,8 @@ class _MaterielsDisponiblesScreenState
   final _rechercheController = TextEditingController();
 
   String _recherche = '';
+  String? _typeFiltre;
+  bool _prixFiltreSeulementArgent = false;
   bool _demandeEnCours = false;
   String? _nouvelleDemandeId;
 
@@ -54,10 +58,43 @@ class _MaterielsDisponiblesScreenState
       return;
     }
 
+    final aujourdhui = jourSeul(DateTime.now());
+    final periode = await showDateRangePicker(
+      context: context,
+      firstDate: aujourdhui,
+      lastDate: aujourdhui.add(const Duration(days: 365)),
+      helpText: 'Choisissez la période de location',
+      saveText: 'Valider',
+      cancelText: 'Annuler',
+    );
+    if (periode == null) return;
+    final debut = jourSeul(periode.start);
+    final fin = jourSeul(periode.end);
+
     setState(() => _demandeEnCours = true);
 
     try {
       _nouvelleDemandeId = null;
+
+      // Le calendrier du matériel : refuser une période déjà réservée.
+      final reservations = await FirebaseFirestore.instance
+          .collection('reservations')
+          .where('materielId', isEqualTo: materielId)
+          .get();
+      for (final r in reservations.docs) {
+        final d = r.data()['dateDebut'];
+        final f = r.data()['dateFin'];
+        if (d is Timestamp &&
+            f is Timestamp &&
+            periodesSeChevauchent(debut, fin, d.toDate(), f.toDate())) {
+          _message(
+            'Ce matériel est déjà réservé ${formaterPeriode(d.toDate(), f.toDate())}. '
+            'Choisissez d’autres dates.',
+          );
+          return;
+        }
+      }
+
       final demandes = await FirebaseFirestore.instance
           .collection('demandes')
           .where('agriculteurId', isEqualTo: user.uid)
@@ -101,6 +138,8 @@ class _MaterielsDisponiblesScreenState
           'localisation':
               materiel['localisation'] ?? data['localisation'] ?? '',
           'statut': 'en_attente',
+          'dateDebut': Timestamp.fromDate(debut),
+          'dateFin': Timestamp.fromDate(fin),
           'dateDemande': FieldValue.serverTimestamp(),
         };
 
@@ -151,7 +190,7 @@ class _MaterielsDisponiblesScreenState
             destinataireId: proprietaireId,
             titre: 'Nouvelle demande de location',
             message:
-                'Un agriculteur a demandé le matériel ${data['nom'] ?? 'agricole'}.',
+                'Un agriculteur a demandé le matériel ${data['nom'] ?? 'agricole'} ${formaterPeriode(debut, fin)}.',
             type: 'nouvelle_demande',
             demandeId: _nouvelleDemandeId,
           );
@@ -181,6 +220,12 @@ class _MaterielsDisponiblesScreenState
   }
 
   bool _correspond(Map<String, dynamic> data) {
+    if (_typeFiltre != null && data['type']?.toString() != _typeFiltre) {
+      return false;
+    }
+    if (_prixFiltreSeulementArgent && data['modePaiement'] == 'negociation') {
+      return false;
+    }
     if (_recherche.isEmpty) return true;
 
     final texte = [
@@ -352,6 +397,35 @@ class _MaterielsDisponiblesScreenState
                 ),
               ),
 
+              SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: const Text('Prix fixe uniquement'),
+                        selected: _prixFiltreSeulementArgent,
+                        onSelected: (v) =>
+                            setState(() => _prixFiltreSeulementArgent = v),
+                      ),
+                    ),
+                    for (final t in typesMateriel)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(t),
+                          selected: _typeFiltre == t,
+                          onSelected: (v) =>
+                              setState(() => _typeFiltre = v ? t : null),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
               Expanded(
                 child: documents.isEmpty
                     ? _etatVide(
@@ -508,6 +582,8 @@ class _MaterielsDisponiblesScreenState
 
                                   const SizedBox(height: 12),
 
+                                  _periodesReservees(document.id),
+
                                   // DISPONIBLE
                                   Container(
                                     padding: const EdgeInsets.symmetric(
@@ -568,6 +644,51 @@ class _MaterielsDisponiblesScreenState
           );
         },
       ),
+    );
+  }
+
+  /// Calendrier : périodes déjà réservées pour ce matériel.
+  Widget _periodesReservees(String materielId) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('reservations')
+          .where('materielId', isEqualTo: materielId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final periodes = <(DateTime, DateTime)>[];
+        for (final r in snapshot.data?.docs ?? const []) {
+          final d = r.data()['dateDebut'];
+          final f = r.data()['dateFin'];
+          if (d is Timestamp && f is Timestamp && !f.toDate().isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+            periodes.add((d.toDate(), f.toDate()));
+          }
+        }
+        if (periodes.isEmpty) return const SizedBox.shrink();
+        periodes.sort((a, b) => a.$1.compareTo(b.$1));
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.event_busy, size: 20, color: Colors.redAccent),
+                  SizedBox(width: 6),
+                  Text(
+                    'Déjà réservé :',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              for (final p in periodes)
+                Padding(
+                  padding: const EdgeInsets.only(left: 26, top: 2),
+                  child: Text(formaterPeriode(p.$1, p.$2)),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/notification_service.dart';
+import '../../utils/periode.dart';
 
 class DemandesLocationScreen extends StatelessWidget {
   const DemandesLocationScreen({super.key});
@@ -24,8 +25,40 @@ class DemandesLocationScreen extends StatelessWidget {
       final firestore = FirebaseFirestore.instance;
 
       final demandeRef = firestore.collection('demandes').doc(demandeId);
+      final reservationRef = firestore.collection('reservations').doc(demandeId);
 
-      final materielRef = firestore.collection('materiels').doc(materielId);
+      // Période demandée (absente sur les anciennes demandes).
+      DateTime? debut;
+      DateTime? fin;
+
+      // Calendrier : on vérifie qu'aucune réservation acceptée ne chevauche
+      // la période demandée avant d'accepter.
+      if (nouveauStatut == 'acceptee') {
+        final snap = await demandeRef.get();
+        final d = snap.data()?['dateDebut'];
+        final f = snap.data()?['dateFin'];
+        if (d is Timestamp && f is Timestamp) {
+          debut = d.toDate();
+          fin = f.toDate();
+          final reservations = await firestore
+              .collection('reservations')
+              .where('materielId', isEqualTo: materielId)
+              .where('proprietaireId', isEqualTo: user.uid)
+              .get();
+          for (final r in reservations.docs) {
+            final rd = r.data()['dateDebut'];
+            final rf = r.data()['dateFin'];
+            if (rd is Timestamp &&
+                rf is Timestamp &&
+                periodesSeChevauchent(debut, fin, rd.toDate(), rf.toDate())) {
+              throw Exception(
+                'Cette période chevauche une location déjà acceptée '
+                '(${formaterPeriode(rd.toDate(), rf.toDate())}).',
+              );
+            }
+          }
+        }
+      }
 
       await firestore.runTransaction((transaction) async {
         final demandeSnapshot = await transaction.get(demandeRef);
@@ -42,46 +75,30 @@ class DemandesLocationScreen extends StatelessWidget {
 
         final statutActuel = demande['statut']?.toString() ?? 'en_attente';
 
-        // =====================================================
-        // ACCEPTATION
-        // =====================================================
         if (nouveauStatut == 'acceptee') {
           if (statutActuel != 'en_attente') {
             throw Exception('Cette demande a déjà été traitée.');
           }
 
-          final materielSnapshot = await transaction.get(materielRef);
-
-          if (!materielSnapshot.exists) {
-            throw Exception('Matériel introuvable.');
-          }
-
-          final materiel = materielSnapshot.data() as Map<String, dynamic>;
-
-          if (materiel['proprietaireId'] != user.uid) {
-            throw Exception('Ce matériel ne vous appartient pas.');
-          }
-
-          if (materiel['disponible'] != true) {
-            throw Exception('Ce matériel n’est plus disponible.');
-          }
-
-          // Le matériel devient indisponible
-          transaction.update(materielRef, {
-            'disponible': false,
-            'dateModification': FieldValue.serverTimestamp(),
-          });
-
-          // La demande devient acceptée
           transaction.update(demandeRef, {
             'statut': 'acceptee',
             'dateModification': FieldValue.serverTimestamp(),
           });
-        }
-        // =====================================================
-        // REFUS
-        // =====================================================
-        else if (nouveauStatut == 'refusee') {
+
+          // Réservation visible de tous : alimente le calendrier du matériel.
+          if (debut != null && fin != null) {
+            transaction.set(reservationRef, {
+              'demandeId': demandeId,
+              'materielId': materielId,
+              'proprietaireId': user.uid,
+              'agriculteurId': demande['agriculteurId'],
+              'nomMateriel': demande['nomMateriel'] ?? '',
+              'dateDebut': Timestamp.fromDate(debut!),
+              'dateFin': Timestamp.fromDate(fin!),
+              'dateCreation': FieldValue.serverTimestamp(),
+            });
+          }
+        } else if (nouveauStatut == 'refusee') {
           if (statutActuel != 'en_attente') {
             throw Exception('Cette demande a déjà été traitée.');
           }
@@ -90,50 +107,26 @@ class DemandesLocationScreen extends StatelessWidget {
             'statut': 'refusee',
             'dateModification': FieldValue.serverTimestamp(),
           });
-        }
-        // =====================================================
-        // FIN DE LOCATION
-        // =====================================================
-        else if (nouveauStatut == 'terminee') {
+        } else if (nouveauStatut == 'terminee') {
           if (statutActuel != 'acceptee') {
             throw Exception('Cette location ne peut pas être terminée.');
           }
 
-          final materielSnapshot = await transaction.get(materielRef);
-
-          if (!materielSnapshot.exists) {
-            throw Exception('Matériel introuvable.');
-          }
-
-          final materiel = materielSnapshot.data() as Map<String, dynamic>;
-
-          if (materiel['proprietaireId'] != user.uid) {
-            throw Exception('Ce matériel ne vous appartient pas.');
-          }
-
-          // Le matériel redevient disponible
-          transaction.update(materielRef, {
-            'disponible': true,
-            'dateModification': FieldValue.serverTimestamp(),
-          });
-
-          // La demande devient terminée
           transaction.update(demandeRef, {
             'statut': 'terminee',
             'dateModification': FieldValue.serverTimestamp(),
           });
+          // Les dates se libèrent dans le calendrier du matériel.
+          transaction.delete(reservationRef);
         } else {
           throw Exception('Statut de demande invalide.');
         }
       });
 
-      // =======================================================
-      // NETTOYAGE DES AUTRES DEMANDES EN ATTENTE POUR CE MATÉRIEL
-      // On filtre aussi par propriétaire pour respecter les règles Firestore.
-      // Une erreur de nettoyage ne doit pas faire croire que l'acceptation
-      // principale a échoué : elle a déjà été enregistrée dans la transaction.
-      // =======================================================
-      if (nouveauStatut == 'acceptee' || nouveauStatut == 'terminee') {
+      // Après une acceptation, les autres demandes en attente dont la période
+      // chevauche celle-ci sont refusées. Une erreur ici ne doit pas faire
+      // croire que l'acceptation a échoué (déjà enregistrée).
+      if (nouveauStatut == 'acceptee' && debut != null && fin != null) {
         try {
           final autres = await firestore
               .collection('demandes')
@@ -142,37 +135,41 @@ class DemandesLocationScreen extends StatelessWidget {
               .where('statut', isEqualTo: 'en_attente')
               .get();
 
-          if (autres.docs.isNotEmpty) {
+          final conflits = autres.docs.where((doc) {
+            final d = doc.data()['dateDebut'];
+            final f = doc.data()['dateFin'];
+            return d is Timestamp &&
+                f is Timestamp &&
+                periodesSeChevauchent(debut!, fin!, d.toDate(), f.toDate());
+          }).toList();
+
+          if (conflits.isNotEmpty) {
             final batch = firestore.batch();
-            for (final doc in autres.docs) {
+            for (final doc in conflits) {
               batch.update(doc.reference, {
                 'statut': 'refusee',
                 'dateModification': FieldValue.serverTimestamp(),
-                'motif': nouveauStatut == 'acceptee'
-                    ? 'Matériel déjà réservé par un autre agriculteur.'
-                    : 'La location précédente est terminée ; veuillez envoyer une nouvelle demande.',
+                'motif': 'Ces dates sont déjà réservées par un autre agriculteur.',
               });
             }
             await batch.commit();
 
-            for (final doc in autres.docs) {
+            for (final doc in conflits) {
               final agriculteurId = doc.data()['agriculteurId']?.toString() ?? '';
               if (agriculteurId.isEmpty) continue;
               try {
                 await NotificationService.creer(
                   destinataireId: agriculteurId,
-                  titre: 'Demande clôturée',
-                  message: 'Cette demande en attente a été clôturée. Vous pouvez envoyer une nouvelle demande si le matériel est disponible.',
-                  type: 'demande_refusee',
+                  titre: 'Demande refusée',
+                  message:
+                      'Ces dates ont été réservées par un autre agriculteur. Vous pouvez choisir une autre période.',
+                  type: 'refusee',
                   demandeId: doc.id,
                 );
               } catch (_) {}
             }
           }
-        } on FirebaseException catch (_) {
-          // Ne pas afficher une fausse erreur d'acceptation/fin de location.
-          // Le statut principal et la disponibilité sont déjà enregistrés.
-        }
+        } on FirebaseException catch (_) {}
       }
 
       try {
@@ -209,11 +206,11 @@ class DemandesLocationScreen extends StatelessWidget {
       String message;
 
       if (nouveauStatut == 'acceptee') {
-        message = 'Demande acceptée. Le matériel est maintenant réservé.';
+        message = 'Demande acceptée. Les dates sont réservées dans le calendrier.';
       } else if (nouveauStatut == 'refusee') {
         message = 'Demande refusée.';
       } else {
-        message = 'Location terminée. Le matériel est de nouveau disponible.';
+        message = 'Location terminée. Les dates sont libérées.';
       }
 
       _message(context, message);
@@ -545,6 +542,23 @@ class DemandesLocationScreen extends StatelessWidget {
 
                       const SizedBox(height: 7),
 
+                      if (data['dateDebut'] is Timestamp &&
+                          data['dateFin'] is Timestamp) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.event, size: 20, color: Colors.green),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Location ${formaterPeriode((data['dateDebut'] as Timestamp).toDate(), (data['dateFin'] as Timestamp).toDate())}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                      ],
+
                       // =================================================
                       // DATE
                       // =================================================
@@ -689,7 +703,7 @@ class DemandesLocationScreen extends StatelessWidget {
                         const SizedBox(height: 10),
                         const Text(
                           'Cette location est terminée. '
-                          'Le matériel est de nouveau disponible.',
+                          'Les dates seront libérées dans le calendrier.',
                           style: TextStyle(color: Colors.blue),
                         ),
                         const SizedBox(height: 8),
@@ -778,7 +792,7 @@ class DemandesLocationScreen extends StatelessWidget {
           title: const Text('Terminer la location'),
           content: const Text(
             'Voulez-vous confirmer que cette location est terminée ?\n\n'
-            'Le matériel redeviendra disponible pour une nouvelle location.',
+            'Les dates seront libérées pour une nouvelle location.',
           ),
           actions: [
             TextButton(

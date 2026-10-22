@@ -17,12 +17,14 @@ Le projet répond à une difficulté rencontrée dans le milieu agricole : l'acc
 
 - Création de compte et connexion des utilisateurs.
 - Gestion des profils selon le rôle de l'utilisateur.
-- Consultation du matériel agricole disponible.
-- Publication et gestion du matériel proposé à la location.
-- Envoi et suivi des demandes de location.
-- Acceptation des demandes par les propriétaires.
-- Notifications liées aux activités de location.
-- Évaluation de l'expérience de location par des avis et des notes.
+- Consultation du matériel agricole disponible, recherche par mot-clé et filtre par type.
+- Publication et gestion du matériel proposé à la location (12 types : tracteur, motopompe, semoir, etc.).
+- Demande de location pour une **période donnée** (date de début / date de fin).
+- **Calendrier de disponibilité** : les périodes déjà réservées sont affichées et les chevauchements sont refusés.
+- Acceptation / refus des demandes par les propriétaires, fin de location.
+- Notifications à chaque étape (demande, acceptation, refus, fin) et **rappel avant la date** de location.
+- Historique des locations et avis / notes après chaque location terminée.
+- Signalements et espace administrateur (blocage de comptes, modération des annonces, traitement des signalements).
 
 ## Technologies utilisées
 
@@ -99,9 +101,28 @@ Connecter un appareil ou démarrer un émulateur, puis exécuter :
 flutter run
 ```
 
+## Déployer les règles de sécurité Firestore
+
+Les règles se trouvent dans `firestore.rules`. Elles doivent être publiées, sinon les notifications, avis, signalements et réservations seront refusés :
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+## Créer le compte administrateur
+
+Le rôle `admin` ne peut pas être choisi à l'inscription. Pour créer l'administrateur :
+
+1. Créer un compte depuis l'application (rôle quelconque).
+2. Dans la console Firebase → Firestore → collection `users` → document de cet utilisateur, remplacer le champ `role` par `admin`.
+
+## Changer l'image d'ouverture
+
+Remplacer le fichier `assets/images/agriloc_splash.png` par la nouvelle image (même nom, format PNG), puis relancer `flutter run`.
+
 ## Sécurité
 
-AgriLoc utilise Firebase pour l'authentification et la gestion des données. Les règles Firestore doivent être vérifiées avant tout déploiement afin que chaque utilisateur puisse uniquement effectuer les opérations autorisées pour son rôle.
+AgriLoc utilise Firebase pour l'authentification et la gestion des données. Les règles Firestore (rôles protégés, accès limité aux parties concernées) doivent être vérifiées avant tout déploiement afin que chaque utilisateur puisse uniquement effectuer les opérations autorisées pour son rôle.
 
 ## Évolutions possibles
 

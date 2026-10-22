@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Obligatoire en version release : sans elle Firebase ne peut pas se connecter. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="agriloc"
+        android:label="AgriLoc"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
