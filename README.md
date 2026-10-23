@@ -138,3 +138,60 @@ Les évolutions futures pourront inclure l'amélioration de l'expérience utilis
 Projet académique réalisé dans le cadre de la formation en informatique.
 
 **AgriLoc — Le matériel agricole à portée de main.** 🌾
+
+## Captures d'écran
+
+Les captures sont dans le dossier [`captures/`](captures/).
+
+**Écran d’ouverture de l’application**
+
+<img src="captures/01-ecran-ouverture.png" width="240" alt="Écran d’ouverture de l’application">
+
+**Écran de connexion**
+
+<img src="captures/02-connexion.png" width="240" alt="Écran de connexion">
+
+**Inscription (choix du rôle : agriculteur ou propriétaire)**
+
+<img src="captures/03-inscription.png" width="240" alt="Inscription (choix du rôle : agriculteur ou propriétaire)">
+
+**Propriétaire : ajout d’un matériel (choix du type)**
+
+<img src="captures/04-ajout-materiel.png" width="240" alt="Propriétaire : ajout d’un matériel (choix du type)">
+
+**Propriétaire : liste de mes matériels avec photos**
+
+<img src="captures/05-mes-materiels.png" width="240" alt="Propriétaire : liste de mes matériels avec photos">
+
+**Agriculteur : recherche et filtres par type**
+
+<img src="captures/06-recherche-filtres.png" width="240" alt="Agriculteur : recherche et filtres par type">
+
+**Agriculteur : choix de la période de location**
+
+<img src="captures/07-choix-periode.png" width="240" alt="Agriculteur : choix de la période de location">
+
+**Agriculteur : période déjà réservée affichée sur l’annonce (calendrier)**
+
+<img src="captures/08-periode-deja-reservee.png" width="240" alt="Agriculteur : période déjà réservée affichée sur l’annonce (calendrier)">
+
+**Propriétaire : demande de location reçue (accepter / refuser)**
+
+<img src="captures/09-demande-recue.png" width="240" alt="Propriétaire : demande de location reçue (accepter / refuser)">
+
+**Propriétaire : notification de nouvelle demande**
+
+<img src="captures/10-notification-nouvelle-demande.png" width="240" alt="Propriétaire : notification de nouvelle demande">
+
+**Agriculteur : notification « Demande acceptée »**
+
+<img src="captures/11-notification-demande-acceptee.png" width="240" alt="Agriculteur : notification « Demande acceptée »">
+
+**Agriculteur : historique de la demande terminée et avis (note 5/5)**
+
+<img src="captures/12-historique-et-avis.png" width="240" alt="Agriculteur : historique de la demande terminée et avis (note 5/5)">
+
+**Administrateur : modération des annonces**
+
+<img src="captures/13-administration.png" width="240" alt="Administrateur : modération des annonces">
+
